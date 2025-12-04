@@ -391,6 +391,29 @@ app.get('/products/normalize', protect, async (req, res, next) => {
 
         const finalData = [...normA, ...normB, ...normC];
 
+        if (finalData.length > 0) {
+            await db.query('table products');
+
+            const insertValues = finalData.map((_, index) => {
+                const start = index * 5 + 1;
+                return `($${start}, $${start + 1}, $${start + 2}, $${start + 3}, $${start + 4})`;
+            }).join(', ');
+
+            const flattenedValues = finalData.flatMap(item => [
+                item.vendor,
+                item.kode,
+                item.nama,
+                item.harga_final,
+                item.status
+            ]);
+
+            const insertSql = `
+                INSERT INTO products (vendor, kode, nama, harga_final, status)
+                VALUES ${insertValues}
+            `;
+
+        await db.query(insertSql, flattenedValues);
+
         return res.json({
             message: "Normalisasi berhasil",
             total: finalData.length,
@@ -401,7 +424,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
             },
             data: finalData
         });
-
+    }
     } catch (err) {
         console.error('[normalisasi error]', err.stack);
         res.status(500).json({ 
@@ -416,7 +439,7 @@ app.get('/products', async (req, res, next) => {
         const sql = "SELECT * FROM products ORDER BY id ASC";
         const result = await db.query(sql);
         res.json({
-            message: "Menampilkan data normalisasi (Saat ini mungkin kosong/dummy).",
+            message: "Menampilkan data normalisasi.",
             data: result.rows
         });
     } catch (err) {
