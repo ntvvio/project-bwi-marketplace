@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./db');
 const jwt = require('jsonwebtoken'); 
+const { protect } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3300;
@@ -26,23 +27,6 @@ app.use((err, req, res, next) => {
     }
     next(err);
 });
-
-const protect = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; 
-
-    if (token == null) {
-        return res.status(401).json({ error: 'Akses ditolak. Token tidak ditemukan.' });
-    }
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: 'Token tidak valid atau kadaluwarsa.' });
-        }
-        req.user = user; 
-        next();
-    });
-};
 
 app.post('/register', async (req, res, next) => {
     const { username, password, role } = req.body;
@@ -91,7 +75,7 @@ app.post('/login', async (req, res, next) => {
 });
 
 //vendor A
-app.get('/vendorA', async (req, res, next) => {
+app.get('/vendorA', protect, async (req, res, next) => {
     try {
         const result = await db.query('SELECT * FROM raw_products_a ORDER BY kd_produk ASC');
         res.json(result.rows);
@@ -100,7 +84,7 @@ app.get('/vendorA', async (req, res, next) => {
     }
 });
 
-app.post('/vendorA', async (req, res, next) => {
+app.post('/vendorA', protect, async (req, res, next) => {
     try {
         const { kd_produk, nm_brg, hrg, ket_stok } = req.body;
         
@@ -117,7 +101,7 @@ app.post('/vendorA', async (req, res, next) => {
     }
 });
 
-app.put('/vendorA/:kd_produk', async (req, res, next) => {
+app.put('/vendorA/:kd_produk', protect, async (req, res, next) => {
     try {
         const { kd_produk } = req.params;
         const { nm_brg, hrg, ket_stok } = req.body;
@@ -157,7 +141,7 @@ app.put('/vendorA/:kd_produk', async (req, res, next) => {
     }
 });
 
-app.delete('/vendorA/:kd_produk', async (req, res, next) => {
+app.delete('/vendorA/:kd_produk', protect, async (req, res, next) => {
     try {
         const { kd_produk } = req.params;
         
@@ -174,7 +158,7 @@ app.delete('/vendorA/:kd_produk', async (req, res, next) => {
 });
 
 //vendor B
-app.get('/vendorB', async (req, res, next) => {
+app.get('/vendorB', protect, async (req, res, next) => {
     try {
         const result = await db.query('SELECT * FROM raw_products_b ORDER BY sku ASC');
         res.json(result.rows);
@@ -183,7 +167,7 @@ app.get('/vendorB', async (req, res, next) => {
     }
 });
 
-app.post('/vendorB', async (req, res, next) => {
+app.post('/vendorB', protect, async (req, res, next) => {
     try {
         const { sku, productName, price, isAvailable } = req.body;
         
@@ -200,7 +184,7 @@ app.post('/vendorB', async (req, res, next) => {
     }
 });
 
-app.put('/vendorB/:sku', async (req, res, next) => {
+app.put('/vendorB/:sku', protect, async (req, res, next) => {
     try {
         const { sku } = req.params;
         const { productName, price, isAvailable } = req.body;
@@ -240,7 +224,7 @@ app.put('/vendorB/:sku', async (req, res, next) => {
     }
 });
 
-app.delete('/vendorB/:sku', async (req, res, next) => {
+app.delete('/vendorB/:sku', protect, async (req, res, next) => {
     try {
         const { sku } = req.params;
         
@@ -257,7 +241,7 @@ app.delete('/vendorB/:sku', async (req, res, next) => {
 });
 
 //vendor C
-app.get('/vendorC', async (req, res, next) => {
+app.get('/vendorC', protect, async (req, res, next) => {
     try {
         const result = await db.query('SELECT * FROM raw_products_c ORDER BY vendor_id ASC');
         res.json(result.rows);
@@ -266,7 +250,7 @@ app.get('/vendorC', async (req, res, next) => {
     }
 });
 
-app.post('/vendorC', async (req, res, next) => {
+app.post('/vendorC', protect, async (req, res, next) => {
     try {
         const { vendor_id, details, pricing, stock } = req.body;
         
@@ -293,7 +277,7 @@ app.post('/vendorC', async (req, res, next) => {
     }
 });
 
-app.put('/vendorC/:vendor_id', async (req, res, next) => {
+app.put('/vendorC/:vendor_id', protect, async (req, res, next) => {
     try {
         const { vendor_id } = req.params;
         const { details, pricing, stock } = req.body;
@@ -347,7 +331,7 @@ app.put('/vendorC/:vendor_id', async (req, res, next) => {
     }
 });
 
-app.delete('/vendorC/:vendor_id', async (req, res, next) => {
+app.delete('/vendorC/:vendor_id', protect, async (req, res, next) => {
     try {
         const { vendor_id } = req.params;
         
