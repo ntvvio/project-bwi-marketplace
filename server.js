@@ -392,19 +392,15 @@ app.get('/products/normalize', protect, async (req, res, next) => {
         const finalData = [...normA, ...normB, ...normC];
 
         if (finalData.length > 0) {
-            await db.query('table products');
+            await db.query('TRUNCATE TABLE products RESTART IDENTITY');
+            console.log('[normalisasi] Menghapus data lama di tabel products.');
 
             const insertValues = finalData.map((_, index) => {
                 const start = index * 5 + 1;
                 return `($${start}, $${start + 1}, $${start + 2}, $${start + 3}, $${start + 4})`;
             }).join(', ');
 
-            const flattenedValues = finalData.flatMap(item => [
-                item.vendor,
-                item.kode,
-                item.nama,
-                item.harga_final,
-                item.status
+            const flattenedValues = finalData.flatMap(item => [item.vendor, item.kode, item.nama, item.harga_final, item.status
             ]);
 
             const insertSql = `
@@ -414,6 +410,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
 
         await db.query(insertSql, flattenedValues);
 
+        }
         return res.json({
             message: "Normalisasi berhasil",
             total: finalData.length,
@@ -424,7 +421,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
             },
             data: finalData
         });
-    }
+        
     } catch (err) {
         console.error('[normalisasi error]', err.stack);
         res.status(500).json({ 
