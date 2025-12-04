@@ -119,6 +119,18 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Terjadi kesalahan pada server' });
 });
 
+const { getVendorBData } = require('./vendors/vendorB');
+
+const [dataA, dataB, dataC] = await Promise.all([
+    getVendorAData(),
+    getVendorBData(),   // <-- BAGIAN VENDOR B
+    getVendorCData()
+]);
+
+status_vendor_B: `${dataB.length} data Modern berhasil diambil.`,
+raw_data_vendor_B_preview: dataB
+
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server aktif di http://localhost:${PORT}`);
 });

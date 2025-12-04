@@ -1,0 +1,20 @@
+[
+  {
+    "sku": "TSHIRT-001",
+    "productName": "Kaos Ijen Crater",
+    "price": 75000,
+    "isAvailable": true
+  },
+  {
+    "sku": "HOODIE-002",
+    "productName": "Hoodie Banyuwangi Culture",
+    "price": 150000,
+    "isAvailable": false
+  },
+  {
+    "sku": "CAP-003",
+    "productName": "Topi Sunrise Banyuwangi",
+    "price": 50000,
+    "isAvailable": true
+  },
+]
