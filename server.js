@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { Pool } = require('pg');
+const db = require('./db');
 const jwt = require('jsonwebtoken'); 
 
 const app = express();
@@ -11,15 +11,20 @@ const JWT_SECRET = process.env.JWT_SECRET;
 app.use(cors());
 app.use(express.json());
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        console.error('JSON PARSE ERROR:');
+        console.error('Error Message:', err.message);
+        console.error('Request URL:', req.url);
+        console.error('Request Method:', req.method);
+        
+        return res.status(400).json({ 
+            error: 'Format JSON tidak valid',
+            detail: err.message,
+            hint: 'Pastikan JSON menggunakan double quotes dan ada koma antar property'
+        });
     }
-});
-
-pool.on('error', (err, client) => {
-    console.error('Unexpected error on idle client:', err);
+    next(err);
 });
 
 const protect = (req, res, next) => {
@@ -47,7 +52,7 @@ app.post('/register', async (req, res, next) => {
             VALUES ($1, $2, $3)
             RETURNING id, username, role;
         `;
-        const result = await pool.query(sql, [username, password, role || 'user']);
+        const result = await db.query(sql, [username, password, role || 'user']);
         res.status(201).json({ message: 'User berhasil didaftarkan.', user: result.rows[0] });
     } catch (err) {
         if (err.code === '23505') { 
@@ -61,7 +66,7 @@ app.post('/login', async (req, res, next) => {
     const { username, password } = req.body;
     try {
         const sql = "SELECT id, username, password, role FROM users WHERE username = $1";
-        const result = await pool.query(sql, [username]);
+        const result = await db.query(sql, [username]);
 
         if (result.rows.length === 0 || result.rows[0].password !== password) {
             return res.status(401).json({ error: 'Username atau password salah.' });
@@ -85,18 +90,16 @@ app.post('/login', async (req, res, next) => {
     }
 });
 
-//vendorA
-//get
+//vendor A
 app.get('/vendorA', async (req, res, next) => {
     try {
-        const result = await pool.query('SELECT * FROM raw_products_a ORDER BY kd_produk ASC');
+        const result = await db.query('SELECT * FROM raw_products_a ORDER BY kd_produk ASC');
         res.json(result.rows);
     } catch (err) {
         next(err);
     }
 });
 
-// buat data baru
 app.post('/vendorA', async (req, res, next) => {
     try {
         const { kd_produk, nm_brg, hrg, ket_stok } = req.body;
@@ -106,7 +109,7 @@ app.post('/vendorA', async (req, res, next) => {
         }
 
         const sql = 'INSERT INTO raw_products_a (kd_produk, nm_brg, hrg, ket_stok) VALUES ($1, $2, $3, $4) RETURNING *';
-        const result = await pool.query(sql, [kd_produk, nm_brg, hrg, ket_stok]);
+        const result = await db.query(sql, [kd_produk, nm_brg, hrg, ket_stok]);
         
         res.status(201).json({ message: 'Produk berhasil ditambahkan', data: result.rows[0] });
     } catch (err) {
@@ -114,7 +117,6 @@ app.post('/vendorA', async (req, res, next) => {
     }
 });
 
-// edit data
 app.put('/vendorA/:kd_produk', async (req, res, next) => {
     try {
         const { kd_produk } = req.params;
@@ -143,7 +145,7 @@ app.put('/vendorA/:kd_produk', async (req, res, next) => {
 
         values.push(kd_produk);
         const sql = `UPDATE raw_products_a SET ${setClauses.join(', ')} WHERE kd_produk = $${index} RETURNING *`;
-        const result = await pool.query(sql, values);
+        const result = await db.query(sql, values);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Produk tidak ditemukan' });
@@ -155,12 +157,11 @@ app.put('/vendorA/:kd_produk', async (req, res, next) => {
     }
 });
 
-// hapus data
 app.delete('/vendorA/:kd_produk', async (req, res, next) => {
     try {
         const { kd_produk } = req.params;
         
-        const result = await pool.query('DELETE FROM raw_products_a WHERE kd_produk = $1 RETURNING *', [kd_produk]);
+        const result = await db.query('DELETE FROM raw_products_a WHERE kd_produk = $1 RETURNING *', [kd_produk]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Produk tidak ditemukan' });
@@ -172,17 +173,16 @@ app.delete('/vendorA/:kd_produk', async (req, res, next) => {
     }
 });
 
-// MENAMPILKAN VENDOR B
+//vendor B
 app.get('/vendorB', async (req, res, next) => {
     try {
-        const result = await pool.query('SELECT * FROM raw_products_b ORDER BY sku ASC');
+        const result = await db.query('SELECT * FROM raw_products_b ORDER BY sku ASC');
         res.json(result.rows);
     } catch (err) {
         next(err);
     }
 });
 
-// MEMBUAT VENDOR B
 app.post('/vendorB', async (req, res, next) => {
     try {
         const { sku, productName, price, isAvailable } = req.body;
@@ -192,7 +192,7 @@ app.post('/vendorB', async (req, res, next) => {
         }
 
         const sql = 'INSERT INTO raw_products_b (sku, productName, price, isAvailable) VALUES ($1, $2, $3, $4) RETURNING *';
-        const result = await pool.query(sql, [sku, productName, price, isAvailable]);
+        const result = await db.query(sql, [sku, productName, price, isAvailable]);
         
         res.status(201).json({ message: 'Produk berhasil ditambahkan', data: result.rows[0] });
     } catch (err) {
@@ -200,7 +200,6 @@ app.post('/vendorB', async (req, res, next) => {
     }
 });
 
-// UPDATE VENDOR B
 app.put('/vendorB/:sku', async (req, res, next) => {
     try {
         const { sku } = req.params;
@@ -229,7 +228,7 @@ app.put('/vendorB/:sku', async (req, res, next) => {
 
         values.push(sku);
         const sql = `UPDATE raw_products_b SET ${setClauses.join(', ')} WHERE sku = $${index} RETURNING *`;
-        const result = await pool.query(sql, values);
+        const result = await db.query(sql, values);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Produk tidak ditemukan' });
@@ -241,12 +240,11 @@ app.put('/vendorB/:sku', async (req, res, next) => {
     }
 });
 
-// HAPUS VENDOR B
 app.delete('/vendorB/:sku', async (req, res, next) => {
     try {
         const { sku } = req.params;
         
-        const result = await pool.query('DELETE FROM raw_products_b WHERE sku = $1 RETURNING *', [sku]);
+        const result = await db.query('DELETE FROM raw_products_b WHERE sku = $1 RETURNING *', [sku]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Produk tidak ditemukan' });
@@ -259,17 +257,15 @@ app.delete('/vendorB/:sku', async (req, res, next) => {
 });
 
 //vendor C
-//get - read
 app.get('/vendorC', async (req, res, next) => {
     try {
-        const result = await pool.query('SELECT * FROM raw_products_c ORDER BY vendor_id ASC');
+        const result = await db.query('SELECT * FROM raw_products_c ORDER BY vendor_id ASC');
         res.json(result.rows);
     } catch (err) {
         next(err);
     }
 });
 
-//post - create
 app.post('/vendorC', async (req, res, next) => {
     try {
         const { vendor_id, details, pricing, stock } = req.body;
@@ -282,7 +278,7 @@ app.post('/vendorC', async (req, res, next) => {
             (vendor_id, details_name, details_category, pricing_base_price, pricing_tax, stock) 
             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
         
-        const result = await pool.query(sql, [
+        const result = await db.query(sql, [
             vendor_id, 
             details.name, 
             details.category, 
@@ -297,7 +293,6 @@ app.post('/vendorC', async (req, res, next) => {
     }
 });
 
-//put - update
 app.put('/vendorC/:vendor_id', async (req, res, next) => {
     try {
         const { vendor_id } = req.params;
@@ -340,7 +335,7 @@ app.put('/vendorC/:vendor_id', async (req, res, next) => {
 
         values.push(vendor_id);
         const sql = `UPDATE raw_products_c SET ${setClauses.join(', ')} WHERE vendor_id = $${index} RETURNING *`;
-        const result = await pool.query(sql, values);
+        const result = await db.query(sql, values);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Produk tidak ditemukan' });
@@ -352,12 +347,11 @@ app.put('/vendorC/:vendor_id', async (req, res, next) => {
     }
 });
 
-//delete - remove
 app.delete('/vendorC/:vendor_id', async (req, res, next) => {
     try {
         const { vendor_id } = req.params;
         
-        const result = await pool.query('DELETE FROM raw_products_c WHERE vendor_id = $1 RETURNING *', [vendor_id]);
+        const result = await db.query('DELETE FROM raw_products_c WHERE vendor_id = $1 RETURNING *', [vendor_id]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Produk tidak ditemukan' });
@@ -375,7 +369,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
     }
 
     try {
-        await pool.query('SELECT 1');
+        await db.query('SELECT 1');
         res.json({ 
             message: 'Server, Koneksi DB, dan Otorisasi (Admin) BERHASIL. Siap menerima Logika Integrasi Vendor.',
             status_koneksi_db: 'OK',
@@ -391,7 +385,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
 app.get('/products', async (req, res, next) => {
     try {
         const sql = "SELECT * FROM products ORDER BY id ASC";
-        const result = await pool.query(sql);
+        const result = await db.query(sql);
         res.json({
             message: "Menampilkan data normalisasi (Saat ini mungkin kosong/dummy).",
             data: result.rows
