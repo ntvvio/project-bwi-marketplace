@@ -1,0 +1,26 @@
+[
+    {
+        "id": 501, 
+        "details": { 
+            "name": "Nasi Tempong", 
+            "category": "Food"
+        },
+        "pricing": {
+            "base_price": 20000, 
+            "tax": 2000          
+        },
+        "stock": 50
+    },
+    {
+        "id": 502, 
+        "details": {
+            "name": "Rujak Soto", 
+            "category": "Food"
+        },
+        "pricing": {
+            "base_price": 18000, 
+            "tax": 1800
+        },
+        "stock": 0
+    }
+]
