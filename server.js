@@ -89,46 +89,24 @@ app.post('/login', async (req, res, next) => {
 //get
 app.get('/vendorA', async (req, res, next) => {
     try {
-        const result = await pool.query('SELECT * FROM vendor_a ORDER BY kd_produk ASC');
+        const result = await pool.query('SELECT * FROM raw_products_a ORDER BY kd_produk ASC');
         res.json(result.rows);
     } catch (err) {
         next(err);
     }
 });
 
-//vendorB
-//get
-app.get('/vendorB', async (req, res, next) => {
+// buat data baru
+app.post('/vendorA', async (req, res, next) => {
     try {
-        const result = await pool.query('SELECT * FROM vendor_b ORDER BY sku ASC');
-        res.json(result.rows);
-    } catch (err) {
-        next(err);
-    }
-});
-
-//vendorC
-//get
-app.get('/vendorC', async (req, res, next) => {
-    try {
-        const result = await pool.query('SELECT * FROM vendor_c ORDER BY id ASC');
-        res.json(result.rows);
-    } catch (err) {
-        next(err);
-    }
-});
-
-//create
-app.post('/vendorC', async (req, res, next) => {
-    try {
-        const { id, details, pricing, stock } = req.body;
+        const { kd_produk, nm_brg, hrg, ket_stok } = req.body;
         
-        if (!id || !details || !pricing || stock === undefined) {
+        if (!kd_produk || !nm_brg || !hrg || !ket_stok) {
             return res.status(400).json({ error: 'Data tidak lengkap' });
         }
 
-        const sql = 'INSERT INTO vendor_c (id, details, pricing, stock) VALUES ($1, $2, $3, $4) RETURNING *';
-        const result = await pool.query(sql, [id, JSON.stringify(details), JSON.stringify(pricing), stock]);
+        const sql = 'INSERT INTO raw_products_a (kd_produk, nm_brg, hrg, ket_stok) VALUES ($1, $2, $3, $4) RETURNING *';
+        const result = await pool.query(sql, [kd_produk, nm_brg, hrg, ket_stok]);
         
         res.status(201).json({ message: 'Produk berhasil ditambahkan', data: result.rows[0] });
     } catch (err) {
@@ -136,35 +114,35 @@ app.post('/vendorC', async (req, res, next) => {
     }
 });
 
-//put
-app.put('/vendorC/:id', async (req, res, next) => {
+// edit data
+app.put('/vendorA/:kd_produk', async (req, res, next) => {
     try {
-        const { id } = req.params;
-        const { details, pricing, stock } = req.body;
+        const { kd_produk } = req.params;
+        const { nm_brg, hrg, ket_stok } = req.body;
         
         const setClauses = [];
         const values = [];
         let index = 1;
 
-        if (details !== undefined) {
-            setClauses.push(`details = $${index++}`);
-            values.push(JSON.stringify(details));
+        if (nm_brg !== undefined) {
+            setClauses.push(`nm_brg = $${index++}`);
+            values.push(nm_brg);
         }
-        if (pricing !== undefined) {
-            setClauses.push(`pricing = $${index++}`);
-            values.push(JSON.stringify(pricing));
+        if (hrg !== undefined) {
+            setClauses.push(`hrg = $${index++}`);
+            values.push(hrg);
         }
-        if (stock !== undefined) {
-            setClauses.push(`stock = $${index++}`);
-            values.push(stock);
+        if (ket_stok !== undefined) {
+            setClauses.push(`ket_stok = $${index++}`);
+            values.push(ket_stok);
         }
 
         if (setClauses.length === 0) {
             return res.status(400).json({ error: 'Tidak ada data untuk diupdate' });
         }
 
-        values.push(id);
-        const sql = `UPDATE vendor_c SET ${setClauses.join(', ')} WHERE id = $${index} RETURNING *`;
+        values.push(kd_produk);
+        const sql = `UPDATE raw_products_a SET ${setClauses.join(', ')} WHERE kd_produk = $${index} RETURNING *`;
         const result = await pool.query(sql, values);
 
         if (result.rows.length === 0) {
@@ -177,12 +155,209 @@ app.put('/vendorC/:id', async (req, res, next) => {
     }
 });
 
-//delete
-app.delete('/vendorC/:id', async (req, res, next) => {
+// hapus data
+app.delete('/vendorA/:kd_produk', async (req, res, next) => {
     try {
-        const { id } = req.params;
+        const { kd_produk } = req.params;
         
-        const result = await pool.query('DELETE FROM vendor_c WHERE id = $1 RETURNING *', [id]);
+        const result = await pool.query('DELETE FROM raw_products_a WHERE kd_produk = $1 RETURNING *', [kd_produk]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Produk tidak ditemukan' });
+        }
+        
+        res.json({ message: 'Produk berhasil dihapus', data: result.rows[0] });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// MENAMPILKAN VENDOR B
+app.get('/vendorB', async (req, res, next) => {
+    try {
+        const result = await pool.query('SELECT * FROM raw_products_b ORDER BY sku ASC');
+        res.json(result.rows);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// MEMBUAT VENDOR B
+app.post('/vendorB', async (req, res, next) => {
+    try {
+        const { sku, productName, price, isAvailable } = req.body;
+        
+        if (!sku || !productName || price === undefined || isAvailable === undefined) {
+            return res.status(400).json({ error: 'Data tidak lengkap' });
+        }
+
+        const sql = 'INSERT INTO raw_products_b (sku, productName, price, isAvailable) VALUES ($1, $2, $3, $4) RETURNING *';
+        const result = await pool.query(sql, [sku, productName, price, isAvailable]);
+        
+        res.status(201).json({ message: 'Produk berhasil ditambahkan', data: result.rows[0] });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// UPDATE VENDOR B
+app.put('/vendorB/:sku', async (req, res, next) => {
+    try {
+        const { sku } = req.params;
+        const { productName, price, isAvailable } = req.body;
+        
+        const setClauses = [];
+        const values = [];
+        let index = 1;
+
+        if (productName !== undefined) {
+            setClauses.push(`productName = $${index++}`);
+            values.push(productName);
+        }
+        if (price !== undefined) {
+            setClauses.push(`price = $${index++}`);
+            values.push(price);
+        }
+        if (isAvailable !== undefined) {
+            setClauses.push(`isAvailable = $${index++}`);
+            values.push(isAvailable);
+        }
+
+        if (setClauses.length === 0) {
+            return res.status(400).json({ error: 'Tidak ada data untuk diupdate' });
+        }
+
+        values.push(sku);
+        const sql = `UPDATE raw_products_b SET ${setClauses.join(', ')} WHERE sku = $${index} RETURNING *`;
+        const result = await pool.query(sql, values);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Produk tidak ditemukan' });
+        }
+        
+        res.json({ message: 'Produk berhasil diupdate', data: result.rows[0] });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// HAPUS VENDOR B
+app.delete('/vendorB/:sku', async (req, res, next) => {
+    try {
+        const { sku } = req.params;
+        
+        const result = await pool.query('DELETE FROM raw_products_b WHERE sku = $1 RETURNING *', [sku]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Produk tidak ditemukan' });
+        }
+        
+        res.json({ message: 'Produk berhasil dihapus', data: result.rows[0] });
+    } catch (err) {
+        next(err);
+    }
+});
+
+//vendor C
+//get - read
+app.get('/vendorC', async (req, res, next) => {
+    try {
+        const result = await pool.query('SELECT * FROM raw_products_c ORDER BY vendor_id ASC');
+        res.json(result.rows);
+    } catch (err) {
+        next(err);
+    }
+});
+
+//post - create
+app.post('/vendorC', async (req, res, next) => {
+    try {
+        const { vendor_id, details, pricing, stock } = req.body;
+        
+        if (!vendor_id || !details || !pricing || stock === undefined) {
+            return res.status(400).json({ error: 'Data tidak lengkap' });
+        }
+
+        const sql = `INSERT INTO raw_products_c 
+            (vendor_id, details_name, details_category, pricing_base_price, pricing_tax, stock) 
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
+        
+        const result = await pool.query(sql, [
+            vendor_id, 
+            details.name, 
+            details.category, 
+            pricing.base_price, 
+            pricing.tax, 
+            stock
+        ]);
+        
+        res.status(201).json({ message: 'Produk berhasil ditambahkan', data: result.rows[0] });
+    } catch (err) {
+        next(err);
+    }
+});
+
+//put - update
+app.put('/vendorC/:vendor_id', async (req, res, next) => {
+    try {
+        const { vendor_id } = req.params;
+        const { details, pricing, stock } = req.body;
+        
+        const setClauses = [];
+        const values = [];
+        let index = 1;
+
+        if (details) {
+            if (details.name !== undefined) {
+                setClauses.push(`details_name = $${index++}`);
+                values.push(details.name);
+            }
+            if (details.category !== undefined) {
+                setClauses.push(`details_category = $${index++}`);
+                values.push(details.category);
+            }
+        }
+        
+        if (pricing) {
+            if (pricing.base_price !== undefined) {
+                setClauses.push(`pricing_base_price = $${index++}`);
+                values.push(pricing.base_price);
+            }
+            if (pricing.tax !== undefined) {
+                setClauses.push(`pricing_tax = $${index++}`);
+                values.push(pricing.tax);
+            }
+        }
+        
+        if (stock !== undefined) {
+            setClauses.push(`stock = $${index++}`);
+            values.push(stock);
+        }
+
+        if (setClauses.length === 0) {
+            return res.status(400).json({ error: 'Tidak ada data untuk diupdate' });
+        }
+
+        values.push(vendor_id);
+        const sql = `UPDATE raw_products_c SET ${setClauses.join(', ')} WHERE vendor_id = $${index} RETURNING *`;
+        const result = await pool.query(sql, values);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Produk tidak ditemukan' });
+        }
+        
+        res.json({ message: 'Produk berhasil diupdate', data: result.rows[0] });
+    } catch (err) {
+        next(err);
+    }
+});
+
+//delete - remove
+app.delete('/vendorC/:vendor_id', async (req, res, next) => {
+    try {
+        const { vendor_id } = req.params;
+        
+        const result = await pool.query('DELETE FROM raw_products_c WHERE vendor_id = $1 RETURNING *', [vendor_id]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Produk tidak ditemukan' });
