@@ -370,6 +370,48 @@ app.get('/products/normalize', protect, async (req, res, next) => {
 
     try {
         await db.query('SELECT 1');
+        const vA = await db.query("SELECT * FROM raw_products_a");
+        const vB = await db.query("SELECT * FROM raw_products_b");
+        const vC = await db.query("SELECT * FROM raw_products_c");
+
+        const normA = vA.rows.map(item => ({
+            vendor: "A",
+            kode: item.kd_produk,
+            nama: item.nm_brg,
+            harga_final: parseInt(item.hrg),
+            status: item.ket_stok
+        }));
+
+        const normB = vB.rows.map(item => ({
+            vendor: "B",
+            kode: item.sku,
+            nama: item.productName,
+            harga_final: item.price,
+            status: item.isAvailable ? "Tersedia" : "Habis"
+        }));
+
+        const normC = vC.rows.map(item => {
+            let nama = item.details_name;
+            if (item.details_category === "Food") {
+                nama += " (Recommended)";
+            }
+
+            return {
+                vendor: "C",
+                kode: item.vendor_id,
+                nama: nama,
+                harga_final: item.pricing_base_price + item.pricing_tax,
+                status: item.stock > 0 ? "Tersedia" : "Habis"
+            };
+        });
+
+        const finalData = [...normA, ...normB, ...normC];
+
+        return res.json({
+            message: "Normalisasi berhasil",
+            total: finalData.length,
+            data: finalData
+        });
         res.json({ 
             message: 'Server, Koneksi DB, dan Otorisasi (Admin) BERHASIL. Siap menerima Logika Integrasi Vendor.',
             status_koneksi_db: 'OK',
