@@ -378,7 +378,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
             vendor: "A",
             kode: item.kd_produk,
             nama: item.nm_brg,
-            harga_final: parseInt(item.hrg),
+            harga_final: Math.round(parseInt(item.hrg) * 0.9),
             status: item.ket_stok
         }));
 
@@ -398,7 +398,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
 
             return {
                 vendor: "C",
-                kode: item.vendor_id,
+                kode: String(item.vendor_id),
                 nama: nama,
                 harga_final: item.pricing_base_price + item.pricing_tax,
                 status: item.stock > 0 ? "Tersedia" : "Habis"
@@ -410,17 +410,20 @@ app.get('/products/normalize', protect, async (req, res, next) => {
         return res.json({
             message: "Normalisasi berhasil",
             total: finalData.length,
+            summary: {
+                vendorA: normA.length,
+                vendorB: normB.length,
+                vendorC: normC.length
+            },
             data: finalData
-        });
-        res.json({ 
-            message: 'Server, Koneksi DB, dan Otorisasi (Admin) BERHASIL. Siap menerima Logika Integrasi Vendor.',
-            status_koneksi_db: 'OK',
-            user_verified: req.user.username
         });
 
     } catch (err) {
-        console.error('[KONEKSI DB ERROR]', err.stack);
-        res.status(500).json({ error: 'Gagal menguji koneksi database.' });
+        console.error('[normalisasi error]', err.stack);
+        res.status(500).json({ 
+            error: 'Gagal menguji koneksi database.',
+            detail: err.message
+        });
     }
 });
 
