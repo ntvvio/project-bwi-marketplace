@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./db');
 const jwt = require('jsonwebtoken'); 
-const { protect } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3300;
