@@ -28,6 +28,23 @@ app.use((err, req, res, next) => {
     next(err);
 });
 
+const protect = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; 
+
+    if (token == null) {
+        return res.status(401).json({ error: 'Akses ditolak. Token tidak ditemukan.' });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ error: 'Token tidak valid atau kadaluwarsa.' });
+        }
+        req.user = user; 
+        next();
+    });
+};
+
 app.post('/register', async (req, res, next) => {
     const { username, password, role } = req.body;
     try {
@@ -75,7 +92,7 @@ app.post('/login', async (req, res, next) => {
 });
 
 //vendor A
-app.get('/vendorA', protect, async (req, res, next) => {
+app.get('/vendorA', async (req, res, next) => {
     try {
         const result = await db.query('SELECT * FROM raw_products_a ORDER BY kd_produk ASC');
         res.json(result.rows);
@@ -84,7 +101,7 @@ app.get('/vendorA', protect, async (req, res, next) => {
     }
 });
 
-app.post('/vendorA', protect, async (req, res, next) => {
+app.post('/vendorA', async (req, res, next) => {
     try {
         const { kd_produk, nm_brg, hrg, ket_stok } = req.body;
         
@@ -101,7 +118,7 @@ app.post('/vendorA', protect, async (req, res, next) => {
     }
 });
 
-app.put('/vendorA/:kd_produk', protect, async (req, res, next) => {
+app.put('/vendorA/:kd_produk', async (req, res, next) => {
     try {
         const { kd_produk } = req.params;
         const { nm_brg, hrg, ket_stok } = req.body;
@@ -141,7 +158,7 @@ app.put('/vendorA/:kd_produk', protect, async (req, res, next) => {
     }
 });
 
-app.delete('/vendorA/:kd_produk', protect, async (req, res, next) => {
+app.delete('/vendorA/:kd_produk', async (req, res, next) => {
     try {
         const { kd_produk } = req.params;
         
@@ -158,7 +175,7 @@ app.delete('/vendorA/:kd_produk', protect, async (req, res, next) => {
 });
 
 //vendor B
-app.get('/vendorB', protect, async (req, res, next) => {
+app.get('/vendorB', async (req, res, next) => {
     try {
         const result = await db.query('SELECT * FROM raw_products_b ORDER BY sku ASC');
         res.json(result.rows);
@@ -167,7 +184,7 @@ app.get('/vendorB', protect, async (req, res, next) => {
     }
 });
 
-app.post('/vendorB', protect, async (req, res, next) => {
+app.post('/vendorB', async (req, res, next) => {
     try {
         const { sku, productName, price, isAvailable } = req.body;
         
@@ -184,7 +201,7 @@ app.post('/vendorB', protect, async (req, res, next) => {
     }
 });
 
-app.put('/vendorB/:sku', protect, async (req, res, next) => {
+app.put('/vendorB/:sku', async (req, res, next) => {
     try {
         const { sku } = req.params;
         const { productName, price, isAvailable } = req.body;
@@ -224,7 +241,7 @@ app.put('/vendorB/:sku', protect, async (req, res, next) => {
     }
 });
 
-app.delete('/vendorB/:sku', protect, async (req, res, next) => {
+app.delete('/vendorB/:sku', async (req, res, next) => {
     try {
         const { sku } = req.params;
         
@@ -241,7 +258,7 @@ app.delete('/vendorB/:sku', protect, async (req, res, next) => {
 });
 
 //vendor C
-app.get('/vendorC', protect, async (req, res, next) => {
+app.get('/vendorC', async (req, res, next) => {
     try {
         const result = await db.query('SELECT * FROM raw_products_c ORDER BY vendor_id ASC');
         res.json(result.rows);
@@ -250,7 +267,7 @@ app.get('/vendorC', protect, async (req, res, next) => {
     }
 });
 
-app.post('/vendorC', protect, async (req, res, next) => {
+app.post('/vendorC', async (req, res, next) => {
     try {
         const { vendor_id, details, pricing, stock } = req.body;
         
@@ -277,7 +294,7 @@ app.post('/vendorC', protect, async (req, res, next) => {
     }
 });
 
-app.put('/vendorC/:vendor_id', protect, async (req, res, next) => {
+app.put('/vendorC/:vendor_id', async (req, res, next) => {
     try {
         const { vendor_id } = req.params;
         const { details, pricing, stock } = req.body;
@@ -331,7 +348,7 @@ app.put('/vendorC/:vendor_id', protect, async (req, res, next) => {
     }
 });
 
-app.delete('/vendorC/:vendor_id', protect, async (req, res, next) => {
+app.delete('/vendorC/:vendor_id', async (req, res, next) => {
     try {
         const { vendor_id } = req.params;
         
@@ -362,7 +379,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
             vendor: "A",
             kode: item.kd_produk,
             nama: item.nm_brg,
-            harga_final: Math.round(parseInt(item.hrg) * 0.9),
+            harga_final: parseInt(item.hrg),
             status: item.ket_stok
         }));
 
@@ -382,7 +399,7 @@ app.get('/products/normalize', protect, async (req, res, next) => {
 
             return {
                 vendor: "C",
-                kode: String(item.vendor_id),
+                kode: item.vendor_id,
                 nama: nama,
                 harga_final: item.pricing_base_price + item.pricing_tax,
                 status: item.stock > 0 ? "Tersedia" : "Habis"
@@ -391,43 +408,14 @@ app.get('/products/normalize', protect, async (req, res, next) => {
 
         const finalData = [...normA, ...normB, ...normC];
 
-        if (finalData.length > 0) {
-            await db.query('TRUNCATE TABLE products RESTART IDENTITY');
-            console.log('[normalisasi] Menghapus data lama di tabel products.');
-
-            const insertValues = finalData.map((_, index) => {
-                const start = index * 5 + 1;
-                return `($${start}, $${start + 1}, $${start + 2}, $${start + 3}, $${start + 4})`;
-            }).join(', ');
-
-            const flattenedValues = finalData.flatMap(item => [item.vendor, item.kode, item.nama, item.harga_final, item.status
-            ]);
-
-            const insertSql = `
-                INSERT INTO products (vendor, kode, nama, harga_final, status)
-                VALUES ${insertValues}
-            `;
-
-        await db.query(insertSql, flattenedValues);
-
-        }
         return res.json({
             message: "Normalisasi berhasil",
             total: finalData.length,
-            summary: {
-                vendorA: normA.length,
-                vendorB: normB.length,
-                vendorC: normC.length
-            },
             data: finalData
         });
-        
     } catch (err) {
-        console.error('[normalisasi error]', err.stack);
-        res.status(500).json({ 
-            error: 'Gagal menguji koneksi database.',
-            detail: err.message
-        });
+        console.error('[KONEKSI DB ERROR]', err.stack);
+        res.status(500).json({ error: 'Gagal menguji koneksi database.' });
     }
 });
 
@@ -436,7 +424,7 @@ app.get('/products', async (req, res, next) => {
         const sql = "SELECT * FROM products ORDER BY id ASC";
         const result = await db.query(sql);
         res.json({
-            message: "Menampilkan data normalisasi.",
+            message: "Menampilkan data normalisasi (Saat ini mungkin kosong/dummy).",
             data: result.rows
         });
     } catch (err) {
